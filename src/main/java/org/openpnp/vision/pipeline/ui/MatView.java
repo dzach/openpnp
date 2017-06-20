@@ -82,7 +82,10 @@ public class MatView extends JComponent {
       int  red = rgb.getRed();
       int  green = rgb.getGreen();
       int  blue = rgb.getBlue();
-
+      // exclude black which is usually the mask
+      if (red == 0 && green == 0 && blue == 0) {
+        return;
+      }
       colorRange[0] = blue  < colorRange[0] ? blue  : colorRange[0];
       colorRange[1] = blue  > colorRange[1] ? blue  : colorRange[1];
       colorRange[2] = green < colorRange[2] ? green : colorRange[2];
@@ -106,14 +109,39 @@ public class MatView extends JComponent {
       */
       for (Polygon poly : polygons) {
         Rectangle bbox = poly.getBounds();
-        if (poly.npoints == 2) {
-          // special case : polygon is a straight line. Make it 
+        if (poly.npoints == 1) {
+          // single point
+          rgb = new Color(image.getRGB(poly.xpoints[0], poly.ypoints[0]), true);
+          setColorRange(rgb);
+        } 
+        else if (poly.npoints == 2) {
+          // special case : polygon is a straight line.
+          int xmin = poly.xpoints[0];
+          int xmax = poly.xpoints[1];
+          double m = ((double)(poly.ypoints[1] - poly.ypoints[0]))/(poly.xpoints[1] - poly.xpoints[0]);
+          int b = (poly.xpoints[1] * poly.ypoints[0] - poly.xpoints[0] * poly.ypoints[1]) / (poly.xpoints[1] - poly.xpoints[0]);
+          if (xmin > xmax) {
+            int tmp = xmin;
+            xmin = xmax;
+            xmax = tmp;
+          }
+          double dx = 1.0;
+          if ((xmax-xmin) < Math.abs(poly.ypoints[1]-poly.ypoints[0])) {
+            dx = ((double)(xmax-xmin)) / Math.abs(poly.ypoints[1]-poly.ypoints[0]);
+          }
+          for (double x = xmin; x < xmax; x+=dx) {
+            int y = (int)(x * m) + b;
+            rgb = new Color(image.getRGB((int)x, y), true);
+             setColorRange(rgb);
+          }
         }
-        for (int x = bbox.x; x < bbox.x + bbox.width;  x++) {
-          for (int y=bbox.y; y < bbox.y + bbox.height; y++) {
-            if (poly.contains(x,y)) {
-              rgb = new Color(image.getRGB(x, y), true);
-              setColorRange(rgb);
+        else {
+          for (int x = bbox.x; x < bbox.x + bbox.width;  x++) {
+            for (int y=bbox.y; y < bbox.y + bbox.height; y++) {
+              if (poly.contains(x,y)) {
+                rgb = new Color(image.getRGB(x, y), true);
+                setColorRange(rgb);
+              }
             }
           }
         }
